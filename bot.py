@@ -33,15 +33,14 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=ReplyKeyboardMarkup(menu, resize_keyboard=True)
         )
 
-async def main():
+def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
     print("Bot running...")
-    await app.run_polling()
+    app.run_polling()  # <-- запускаем без await и asyncio.run
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    main()
