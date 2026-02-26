@@ -1,33 +1,42 @@
 from flask import Flask, request
-from telegram import Update, Bot
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+import asyncio
 
+# ====== Настройки ======
 TOKEN = "8217980258:AAHed5tCiB1XVRkFb1RgEY2VXg4kOGG_wGg"
-URL = "https://telegram-bot-1python-bot-py-jhri.onrender.com"
 
+# ====== Flask ======
 app = Flask(__name__)
 
-# Создаем асинхронное обработчик команды
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Я бот.")
+# ====== Telegram Bot ======
+telegram_app = ApplicationBuilder().token(TOKEN).build()
 
-# Flask маршрут для webhook
+# ---- Команда /start ----
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Привет! Я бот работает через Render free webhook.")
+
+telegram_app.add_handler(CommandHandler("start", start))
+
+# ---- Инициализация Telegram приложения ----
+asyncio.get_event_loop().create_task(telegram_app.initialize())
+asyncio.get_event_loop().create_task(telegram_app.start())
+
+# ====== Webhook ======
 @app.route(f"/{TOKEN}", methods=["POST"])
-async def webhook():
-    update = Update.de_json(request.get_json(force=True), bot)
-    await application.update_queue.put(update)
+def webhook():
+    """Обрабатываем POST запросы от Telegram"""
+    update = Update.de_json(request.get_json(force=True), telegram_app.bot)
+    # Отправляем обновление в очередь обработчиков
+    asyncio.get_event_loop().create_task(telegram_app.update_queue.put(update))
     return "OK"
 
-@app.route("/")
-def index():
+# ====== Проверка работы ======
+@app.route("/", methods=["GET"])
+def home():
     return "Bot is running!"
 
+# ====== Локальный запуск (опционально) ======
 if __name__ == "__main__":
-    import os
-    bot = Bot(TOKEN)
-    application = ApplicationBuilder().token(TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    # Устанавливаем webhook
-    bot.set_webhook(f"{URL}/{TOKEN}")
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    # Если хочешь тестировать локально с polling
+    telegram_app.run_polling()
