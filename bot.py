@@ -1,14 +1,13 @@
 from flask import Flask, request
-from telegram import Update, Bot
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import os
+import asyncio
 
 TOKEN = os.getenv("BOT_TOKEN")
-PORT = int(os.environ.get("PORT", 5000))  # Render сам выдаст порт
+PORT = int(os.environ.get("PORT", 5000))
 
-bot = Bot(TOKEN)
 app = Flask(__name__)
-telegram_app = None  # для ApplicationBuilder
 
 languages = {
     "🇷🇺 Русский": "ru",
@@ -17,45 +16,26 @@ languages = {
 }
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [["🇷🇺 Русский", "🇬🇧 English", "🇩🇪 Deutsch"]]
-    await update.message.reply_text(
-        "Выберите язык / Choose language / Sprache wählen",
-        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    )
+    await update.message.reply_text("Бот работает 🚀")
 
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
+    await update.message.reply_text("Сообщение получено")
 
-    if text in languages:
-        context.user_data["lang"] = languages[text]
+telegram_app = ApplicationBuilder().token(TOKEN).build()
+telegram_app.add_handler(CommandHandler("start", start))
+telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
-        menu = [
-            ["📦 Мои посылки", "➕ Добавить посылку"],
-            ["❌ Проблема", "⚙️ Настройки"]
-        ]
-
-        await update.message.reply_text(
-            "Главное меню:",
-            reply_markup=ReplyKeyboardMarkup(menu, resize_keyboard=True)
-        )
-
-# --- Flask route для Telegram webhook ---
 @app.route(f"/{TOKEN}", methods=["POST"])
-def webhook():
-    """Принимаем апдейты от Telegram и отправляем в бот"""
-    update = Update.de_json(request.get_json(force=True), bot)
-    telegram_app.update_queue.put_nowait(update)
+async def webhook():
+    update = Update.de_json(request.get_json(force=True), telegram_app.bot)
+    await telegram_app.process_update(update)
     return "OK"
 
-async def setup_telegram_app():
-    global telegram_app
-    telegram_app = ApplicationBuilder().token(TOKEN).build()
-    telegram_app.add_handler(CommandHandler("start", start))
-    telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
-    await telegram_app.initialize()  # инициализация без run_polling()
+@app.route("/")
+def index():
+    return "Bot is running"
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(setup_telegram_app())
-    # Запуск Flask на Render
+    asyncio.run(telegram_app.initialize())
+    asyncio.run(telegram_app.start())
     app.run(host="0.0.0.0", port=PORT)
