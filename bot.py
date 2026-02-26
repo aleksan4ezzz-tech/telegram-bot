@@ -4,7 +4,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, Con
 import os
 import asyncio
 
-TOKEN = os.getenv("8217980258:AAHed5tCiB1XVRkFb1RgEY2VXg4kOGG_wGg")
+TOKEN = os.environ.get("8217980258:AAHed5tCiB1XVRkFb1RgEY2VXg4kOGG_wGg")
 PORT = int(os.environ.get("PORT", 5000))
 
 app = Flask(__name__)
@@ -38,5 +38,4 @@ def index():
 if __name__ == "__main__":
     asyncio.run(telegram_app.initialize())
     asyncio.run(telegram_app.start())
-
     app.run(host="0.0.0.0", port=PORT)
