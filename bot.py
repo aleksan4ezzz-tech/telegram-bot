@@ -1,27 +1,21 @@
 from flask import Flask, request
-import telegram
+from telegram import Update, Bot
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 TOKEN = "8217980258:AAHed5tCiB1XVRkFb1RgEY2VXg4kOGG_wGg"
-WEBHOOK_PATH = f"/{TOKEN}"
-URL = "https://telegram-bot-1python-bot-py-jhri.onrender.com"  # твой Render URL
+URL = "https://telegram-bot-1python-bot-py-jhri.onrender.com"
 
-bot = telegram.Bot(token=TOKEN)
 app = Flask(__name__)
 
-# Простая команда /start
-def handle_message(update):
-    text = update.message.text
-    chat_id = update.message.chat.id
-    if text == "/start":
-        bot.send_message(chat_id, "Привет! Я бот.")
-    else:
-        bot.send_message(chat_id, f"Вы написали: {text}")
+# Создаем асинхронное обработчик команды
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Привет! Я бот.")
 
-# Webhook маршрут
-@app.route(WEBHOOK_PATH, methods=["POST"])
-def webhook():
-    update = telegram.Update.de_json(request.get_json(force=True), bot)
-    handle_message(update)
+# Flask маршрут для webhook
+@app.route(f"/{TOKEN}", methods=["POST"])
+async def webhook():
+    update = Update.de_json(request.get_json(force=True), bot)
+    await application.update_queue.put(update)
     return "OK"
 
 @app.route("/")
@@ -30,6 +24,10 @@ def index():
 
 if __name__ == "__main__":
     import os
+    bot = Bot(TOKEN)
+    application = ApplicationBuilder().token(TOKEN).build()
+    application.add_handler(CommandHandler("start", start))
+    # Устанавливаем webhook
+    bot.set_webhook(f"{URL}/{TOKEN}")
     port = int(os.environ.get("PORT", 5000))
-    bot.set_webhook(url=f"{URL}/{TOKEN}")  # устанавливаем webhook
     app.run(host="0.0.0.0", port=port)
